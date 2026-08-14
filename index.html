@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="一路 - 从天气、交通、酒店到逐日行程的一站式旅行规划演示" />
+    <title>一路 · 旅行规划</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gantari:wght@400;500;600;700&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="一路首页">
+        <span class="brand-mark" aria-hidden="true">一</span>
+        <span>一路</span>
+      </a>
+      <nav class="top-nav" aria-label="主要导航">
+        <a class="active" href="#planner">规划行程</a>
+        <a href="#saved">我的收藏</a>
+      </nav>
+      <button class="avatar-button" type="button" aria-label="账户">游</button>
+    </header>
+
+    <main id="top">
+      <section class="planner-shell" id="planner" aria-labelledby="planner-title">
+        <div class="planner-intro">
+          <p class="eyebrow">AI TRIP PLANNER</p>
+          <h1 id="planner-title">想去哪儿，剩下的交给一路</h1>
+          <p>天气、交通、住处和每天怎么玩，一次排清楚。</p>
+        </div>
+
+        <form class="trip-form" id="trip-form">
+          <label class="field field-origin">
+            <span>从哪里出发</span>
+            <input id="origin" name="origin" value="上海" autocomplete="address-level2" required />
+          </label>
+          <button class="swap-button" id="swap-button" type="button" aria-label="交换出发地和目的地" title="交换出发地和目的地">⇄</button>
+          <label class="field field-destination">
+            <span>想去哪里</span>
+            <input id="destination" name="destination" value="东京" autocomplete="address-level2" required />
+          </label>
+          <label class="field field-date">
+            <span>出发日期</span>
+            <input id="start-date" name="start-date" type="date" value="2026-10-01" required />
+          </label>
+          <label class="field field-date">
+            <span>返程日期</span>
+            <input id="end-date" name="end-date" type="date" value="2026-10-06" required />
+          </label>
+          <label class="field field-budget">
+            <span>每晚酒店预算</span>
+            <span class="currency-input"><b>¥</b><input id="hotel-budget" name="hotel-budget" type="number" value="800" min="200" step="50" required /></span>
+          </label>
+          <button class="generate-button" id="generate-button" type="submit">
+            <span class="button-label">生成攻略</span>
+            <span class="button-arrow" aria-hidden="true">→</span>
+          </button>
+        </form>
+        <p class="form-note">当前为产品演示，价格与评价均为模拟聚合数据，不作为预订依据。</p>
+      </section>
+
+      <section class="workspace" id="results" aria-live="polite">
+        <aside class="trip-sidebar" aria-label="行程章节">
+          <div class="trip-stamp">
+            <span class="trip-number">01</span>
+            <div>
+              <p>YOUR TRIP</p>
+              <h2 id="sidebar-destination">东京</h2>
+              <span id="sidebar-date">10月1日 - 10月6日 · 6天5晚</span>
+            </div>
+          </div>
+          <nav class="section-nav" id="section-nav">
+            <a class="active" href="#overview" data-section="overview"><span>概览</span><b>01</b></a>
+            <a href="#weather" data-section="weather"><span>天气穿搭</span><b>02</b></a>
+            <a href="#flights" data-section="flights"><span>往返交通</span><b>03</b></a>
+            <a href="#hotels" data-section="hotels"><span>酒店推荐</span><b>04</b></a>
+            <a href="#itinerary" data-section="itinerary"><span>逐日攻略</span><b>05</b></a>
+          </nav>
+          <div class="sidebar-total">
+            <span>当前方案预估</span>
+            <strong id="sidebar-total">¥7,842</strong>
+            <small>1 人 · 不含餐饮购物</small>
+          </div>
+        </aside>
+
+        <div class="content-column">
+          <section class="content-section overview-section" id="overview">
+            <div class="section-heading overview-heading">
+              <div>
+                <p class="section-index">01 / 行程概览</p>
+                <h2><span id="greeting-destination">东京</span>，正适合慢慢走</h2>
+              </div>
+              <button class="quiet-button" id="save-plan" type="button">♡ 收藏方案</button>
+            </div>
+
+            <div class="overview-grid">
+              <article class="trip-visual">
+                <img src="assets/tokyo-street.jpg" alt="东京街巷与城市风景" />
+                <div class="visual-caption">
+                  <p id="visual-route">上海 → 东京</p>
+                  <span id="visual-meta">6 天 · 城市漫游 · 经典与购物</span>
+                </div>
+              </article>
+              <div class="overview-facts">
+                <article class="fact weather-fact">
+                  <span class="fact-label">出行天气</span>
+                  <div><strong id="overview-temp">18–24°</strong><span id="overview-weather">晴间多云</span></div>
+                  <p id="overview-wear">薄外套 + 长袖，早晚添一层</p>
+                </article>
+                <article class="fact">
+                  <span class="fact-label">已选航班</span>
+                  <div><strong id="overview-flight-time">08:20</strong><span id="overview-flight-name">东航 · 直飞</span></div>
+                  <p id="overview-flight-price">往返 ¥2,486</p>
+                </article>
+                <article class="fact">
+                  <span class="fact-label">已选酒店</span>
+                  <div><strong id="overview-hotel-name">浅草格拉斯丽</strong><span id="overview-hotel-rating">4.8 分</span></div>
+                  <p id="overview-hotel-price">5 晚 ¥3,740</p>
+                </article>
+              </div>
+            </div>
+
+            <div class="route-strip" aria-label="行程亮点">
+              <span>抵达</span><i></i><b>浅草</b><i></i><b>银座</b><i></i><b>镰仓</b><i></i><b>涩谷</b><i></i><span>返程</span>
+            </div>
+          </section>
+
+          <section class="content-section" id="weather">
+            <div class="section-heading">
+              <div>
+                <p class="section-index">02 / 天气与穿搭</p>
+                <h2>行李不用靠猜</h2>
+              </div>
+              <span class="source-note">季节气候估算 · 非实时预报</span>
+            </div>
+            <div class="weather-layout">
+              <div class="weather-days" id="weather-days"></div>
+              <aside class="packing-list">
+                <p>建议带上</p>
+                <ul id="packing-list"></ul>
+              </aside>
+            </div>
+          </section>
+
+          <section class="content-section" id="flights">
+            <div class="section-heading split-heading">
+              <div>
+                <p class="section-index">03 / 往返交通</p>
+                <h2>10 个值得比较的航班</h2>
+                <p class="heading-copy">按总价排序，价格包含往返含税估算。</p>
+              </div>
+              <div class="segmented" id="flight-sort" aria-label="航班排序">
+                <button class="active" type="button" data-sort="price">价格</button>
+                <button type="button" data-sort="time">时间</button>
+                <button type="button" data-sort="duration">耗时</button>
+              </div>
+            </div>
+            <div class="flight-header" aria-hidden="true">
+              <span>平台 / 航司</span><span>去程</span><span>返程</span><span>飞行信息</span><span>往返含税</span><span>操作</span>
+            </div>
+            <div class="flight-list" id="flight-list"></div>
+            <button class="show-more" id="more-flights" type="button">展开全部 12 个航班 <span>↓</span></button>
+            <p class="data-disclaimer">演示数据覆盖携程、飞猪及航司官网的展示结构。正式接入需由各平台授权接口返回实时库存与最终价格。</p>
+          </section>
+
+          <section class="content-section" id="hotels">
+            <div class="section-heading split-heading">
+              <div>
+                <p class="section-index">04 / 酒店推荐</p>
+                <h2>住得方便，也不超预算</h2>
+                <p class="heading-copy">优先市区、步行 8 分钟内到地铁、综合评分 4.6 以上。</p>
+              </div>
+              <label class="budget-control">
+                <span>每晚不超过</span>
+                <b>¥<output id="budget-output">800</output></b>
+                <input id="budget-range" type="range" min="400" max="1600" step="50" value="800" />
+              </label>
+            </div>
+            <div class="hotel-grid" id="hotel-grid"></div>
+            <button class="show-more" id="more-hotels" type="button">展开全部 12 家酒店 <span>↓</span></button>
+            <p class="data-disclaimer">评价为模拟聚合口径，用于演示携程、飞猪、Booking 等多平台评分归一化后的产品体验。</p>
+          </section>
+
+          <section class="content-section" id="itinerary">
+            <div class="section-heading split-heading">
+              <div>
+                <p class="section-index">05 / 逐日攻略</p>
+                <h2>把经典留住，也给闲逛留白</h2>
+                <p class="heading-copy">每段移动都列出线路、换乘、出口与预计时间；运营调整以当天地图为准。</p>
+              </div>
+              <div class="legend"><span class="classic-dot"></span>经典 <span class="shopping-dot"></span>购物</div>
+            </div>
+            <div class="itinerary-list" id="itinerary-list"></div>
+
+            <div class="buy-section">
+              <div>
+                <p class="section-index">BUY LIST</p>
+                <h3><span id="buy-destination">东京</span>有什么值得买</h3>
+              </div>
+              <div class="buy-grid" id="buy-grid"></div>
+            </div>
+          </section>
+
+          <section class="final-plan" id="final-plan">
+            <div>
+              <p class="section-index">PLAN COMPLETE</p>
+              <h2>你的详细规划已经排好</h2>
+              <p id="final-summary">10 月 1 日从上海出发，入住市区酒店，用 6 天把东京的经典、街区和购物一次走透。</p>
+            </div>
+            <div class="cost-breakdown">
+              <p><span>往返机票</span><b id="cost-flight">¥2,486</b></p>
+              <p><span>酒店 5 晚</span><b id="cost-hotel">¥3,740</b></p>
+              <p><span>市内交通与门票</span><b id="cost-local">¥1,616</b></p>
+              <p class="cost-total"><span>预计基础花费</span><strong id="cost-total">¥7,842</strong></p>
+            </div>
+            <button class="export-button" id="export-plan" type="button">导出行程摘要 <span>↗</span></button>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
