@@ -21,6 +21,7 @@
   --space-3xl: 64px;
   --radius-sm: 4px;
   --radius-md: 8px;
+  --hero-image: url("assets/tokyo-street.jpg");
   --font-display: "ZCOOL XiaoWei", "Songti SC", serif;
   --font-body: "Gantari", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
@@ -126,7 +127,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   padding: clamp(40px, 7vw, 78px) clamp(20px, 5vw, 72px) clamp(32px, 5vw, 56px);
   background:
     linear-gradient(100deg, color-mix(in oklch, var(--green-dark) 94%, transparent) 0 45%, color-mix(in oklch, var(--green-dark) 70%, transparent) 70%, color-mix(in oklch, var(--green-dark) 58%, transparent)),
-    url("assets/tokyo-street.jpg") center 54% / cover;
+    var(--hero-image) center 54% / cover;
 }
 
 .planner-shell::after {

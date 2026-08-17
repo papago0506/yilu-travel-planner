@@ -34,8 +34,40 @@ const destinationProfiles = {
     route: ["大皇宫", "暹罗", "水上市场", "通罗"], areas: ["暹罗", "素坤逸", "是隆", "通罗", "河畔", "阿索克"], stations: ["Siam 站", "Asok 站", "Sala Daeng 站", "Thong Lo 站", "Saphan Taksin 站", "Phrom Phong 站"],
     highlights: [["大皇宫", "卧佛寺", "郑王庙"], ["吉姆汤普森之家", "暹罗商圈", "四面佛"], ["美功铁道", "丹嫩沙多", "河畔夜市"], ["乍都乍", "阿里区", "胜利纪念碑"], ["通罗", "Emsphere", "素坤逸"], ["伦披尼公园", "ICONSIAM", "机场"]],
     shopping: ["暹罗", "河畔夜市", "乍都乍", "Emsphere"], buys: [["泰式零食", "小老板海苔 / 榴莲干", "商超采购更稳妥"], ["香氛护理", "本土香薰与精油", "确认液体托运限制"], ["手工织物", "泰丝包与小件家饰", "关注材质而非只看图案"], ["设计品牌", "本土服饰与首饰", "暹罗中心品牌最集中"], ["药妆好物", "青草膏与鼻通", "正规连锁药房购买"], ["料理食材", "咖喱酱与冬阴功料", "选择密封小包装"]]
+  },
+  "西班牙": {
+    displayName: "西班牙 · 巴塞罗那",
+    searchCity: "巴塞罗那",
+    image: "assets/barcelona.jpg",
+    imageAlt: "巴塞罗那圣家堂与城市街区",
+    route: ["圣家堂", "格拉西亚", "哥特区", "蒙锥克"],
+    areas: ["扩展区", "哥特区", "格拉西亚", "圣徒区", "博恩区", "加泰罗尼亚广场"],
+    stations: ["Passeig de Gràcia", "Liceu", "Diagonal", "Sants Estació", "Jaume I", "Catalunya"],
+    highlights: [
+      ["圣家堂", "圣十字圣保罗医院", "格拉西亚"],
+      ["古埃尔公园", "巴特罗之家", "米拉之家"],
+      ["哥特区", "巴塞罗那主教座堂", "El Born"],
+      ["蒙锥克山", "MNAC", "西班牙村"],
+      ["巴塞罗内塔海滩", "Port Vell", "兰布拉大道"],
+      ["博盖利亚市场", "格拉西亚大道", "BCN 机场"]
+    ],
+    shopping: ["格拉西亚", "El Born", "兰布拉大道", "博盖利亚市场", "格拉西亚大道"],
+    buys: [
+      ["橄榄油与罐头", "特级初榨橄榄油 / 海鲜罐头", "博盖利亚市场或大型超市购买，留意托运限制"],
+      ["伊比利亚火腿", "真空包装火腿与腊肠", "确认入境检疫规则后再购买"],
+      ["西班牙皮具", "皮鞋、钱包与小型皮件", "格拉西亚大道与本地品牌店款式更集中"],
+      ["陶瓷手工艺", "加泰罗尼亚花砖与餐具", "哥特区选择多，易碎品建议随身携带"],
+      ["本土香氛", "Carner Barcelona 等城市香氛", "先试香，再比较退税门槛"],
+      ["城市纪念品", "巴萨 / 高迪建筑主题周边", "优先官方商店与博物馆商店" ]
+    ],
+    flightAirlines: ["东方航空", "中国国际航空", "阿联酋航空", "卡塔尔航空", "法国航空", "汉莎航空", "荷兰皇家航空", "土耳其航空", "瑞士国际航空", "英国航空", "国泰航空", "芬兰航空"],
+    flightPlatforms: ["携程", "飞猪", "阿联酋航空官网", "卡塔尔航空官网", "法国航空官网", "汉莎航空官网", "荷兰皇家航空官网", "土耳其航空官网", "携程", "飞猪", "国泰航空官网", "芬兰航空官网"],
+    flightBasePrice: 4680,
+    flightDuration: 870
   }
 };
+
+const destinationAliases = { "巴塞罗那": "西班牙", "Barcelona": "西班牙", "barcelona": "西班牙", "Spain": "西班牙", "spain": "西班牙" };
 
 const fallbackProfile = {
   route: ["老城", "城市地标", "近郊", "购物街区"],
@@ -56,9 +88,23 @@ const hotelCatalogs = {
     ["秋叶原华盛顿", "秋叶原", "秋叶原站"], ["御茶水龙名馆", "御茶水", "御茶水站"],
     ["赤坂日航城市", "赤坂", "赤坂站"], ["两国第一", "两国", "两国站"],
     ["六本木雷姆", "六本木", "六本木站"], ["池袋大都会", "池袋", "池袋站"]
+  ],
+  "西班牙": [
+    ["Catalonia Passeig de Gràcia", "扩展区", "Passeig de Gràcia"],
+    ["Room Mate Anna", "扩展区", "Passeig de Gràcia"],
+    ["Praktik Bakery", "扩展区", "Diagonal"],
+    ["Casa Gracia Barcelona", "格拉西亚", "Diagonal"],
+    ["Hotel España Ramblas", "哥特区", "Liceu"],
+    ["Hotel Barcelona Catedral", "哥特区", "Jaume I"],
+    ["H10 Madison", "哥特区", "Jaume I"],
+    ["Chic & Basic Born Boutique", "博恩区", "Jaume I"],
+    ["Barceló Sants", "圣徒区", "Sants Estació"],
+    ["Hotel Denit Barcelona", "加泰罗尼亚广场", "Catalunya"],
+    ["Yurbban Passage Hotel & Spa", "加泰罗尼亚广场", "Catalunya"],
+    ["Hotel Jazz", "加泰罗尼亚广场", "Catalunya"]
   ]
 };
-const airportCodes = { "上海": "sha", "东京": "tyo", "大阪": "osa", "曼谷": "bkk", "北京": "bjs", "广州": "can", "深圳": "szx", "成都": "ctu", "杭州": "hgh", "重庆": "ckg", "西安": "sia", "香港": "hkg" };
+const airportCodes = { "上海": "sha", "东京": "tyo", "大阪": "osa", "曼谷": "bkk", "西班牙": "bcn", "巴塞罗那": "bcn", "北京": "bjs", "广州": "can", "深圳": "szx", "成都": "ctu", "杭州": "hgh", "重庆": "ckg", "西安": "sia", "香港": "hkg" };
 
 const transportGuides = {
   "东京": {
@@ -152,6 +198,54 @@ const transportGuides = {
       [["轻轨", 20, "Siam 站乘 BTS 素坤逸线至 Thong Lo", "3 号口出站，转短程摩托出租或步行"], ["轻轨", 12, "Thong Lo 站乘 BTS 至 Phrom Phong", "2 站；6 号口连通 Emsphere"], ["轻轨", 17, "Phrom Phong 站乘 BTS 至 Nana 或 Asok，沿素坤逸街区步行", "晚间人流密集，保管好随身物品"], ["轻轨", 16, "Asok 站乘 BTS 至 Siam", "4 站直达"]],
       [["地铁", 18, "Siam 站乘 BTS 至 Sala Daeng，步行换 MRT Si Lom", "1 号口出站进入伦披尼公园"], ["地铁+轻轨", 32, "Si Lom 站乘 MRT 至 Hua Lamphong，再转出租车前往 ICONSIAM", "商场 G 层可寄存行李"], ["轻轨+机场线", 52, "乘接驳船至 Sathorn，BTS 到 Phaya Thai，换机场快线", "Suvarnabhumi 机场站下车；预留换乘步行"]]
     ]
+  },
+  "西班牙": {
+    hub: "Passeig de Gràcia",
+    feeders: {
+      "Passeig de Gràcia": [0, "从酒店步行至 Passeig de Gràcia 站", "从 Passeig de Gràcia 站步行返回酒店"],
+      "Liceu": [7, "Liceu 站乘 L3 线至 Passeig de Gràcia 站", "Passeig de Gràcia 站乘 L3 线至 Liceu 站"],
+      "Diagonal": [5, "Diagonal 站乘 L3 线至 Passeig de Gràcia 站", "Passeig de Gràcia 站乘 L3 线至 Diagonal 站"],
+      "Sants Estació": [14, "Sants Estació 站乘 L5 线至 Diagonal，换 L3 线至 Passeig de Gràcia", "Passeig de Gràcia 站乘 L3 线至 Diagonal，换 L5 线至 Sants Estació"],
+      "Jaume I": [9, "Jaume I 站乘 L4 线直达 Passeig de Gràcia 站", "Passeig de Gràcia 站乘 L4 线直达 Jaume I 站"],
+      "Catalunya": [5, "Catalunya 站乘 L3 线至 Passeig de Gràcia 站", "Passeig de Gràcia 站乘 L3 线至 Catalunya 站"]
+    },
+    days: [
+      [
+        ["地铁", 12, "Passeig de Gràcia 站乘 L2 线直达 Sagrada Família", "5 站；2 号口出站，步行约 3 分钟到圣家堂"],
+        ["步行", 13, "沿 Carrer de la Marina 向北步行约 950 米", "从圣保罗医院主入口进入，沿途为缓坡"],
+        ["公交", 22, "在 Av. Gaudí 乘 H8 路至 Pg. de Sant Joan，再步行进入格拉西亚", "工作日约 10 分钟一班；车上可刷交通卡"],
+        ["地铁", 15, "从 Fontana 站乘 L3 线至 Passeig de Gràcia", "2 站直达；按 Aragó 出口标识出站"]
+      ],
+      [
+        ["地铁 + 公交", 31, "Passeig de Gràcia 站乘 L3 线至 Lesseps，换 116 路社区巴士", "Lesseps 站 3 号口出；古埃尔公园建议预约入场时段"],
+        ["公交", 28, "从 Park Güell 站乘 24 路至 Pg. de Gràcia - Aragó", "下车后步行约 4 分钟到巴特罗之家"],
+        ["步行", 9, "沿格拉西亚大道向北步行约 650 米", "米拉之家位于 Provença 路口，途中商店集中"],
+        ["步行", 12, "沿格拉西亚大道向南返回 Passeig de Gràcia 站", "约 850 米；晚间大道照明充足"]
+      ],
+      [
+        ["地铁", 10, "Passeig de Gràcia 站乘 L4 线至 Jaume I", "2 站直达；4 号口出站进入哥特区"],
+        ["步行", 6, "沿 Carrer de la Llibreteria 步行约 400 米", "穿过国王广场后抵达主教座堂东侧"],
+        ["步行", 14, "经 Via Laietana 向东步行至 El Born", "约 1 公里；可从圣卡特琳娜市场顺路经过"],
+        ["地铁", 12, "步行回 Jaume I 站，乘 L4 线至 Passeig de Gràcia", "2 站直达；出站后步行返回酒店"]
+      ],
+      [
+        ["地铁 + 缆车", 27, "Passeig de Gràcia 站乘 L3 线至 Paral·lel，站内换蒙锥克缆车", "缆车使用地铁票；Parc de Montjuïc 站出站"],
+        ["公交", 16, "乘 150 路公交至 Museu Nacional d'Art de Catalunya", "在 Palau Sant Jordi 方向站点候车"],
+        ["步行", 12, "从 MNAC 沿 Av. dels Montanyans 步行约 850 米", "经阶梯和缓坡到西班牙村入口"],
+        ["公交 + 地铁", 26, "乘 150 路至 Espanya 站，换 L3 线至 Passeig de Gràcia", "Espanya 站站内换乘；3 站直达"]
+      ],
+      [
+        ["地铁", 16, "Passeig de Gràcia 站乘 L4 线至 Barceloneta", "4 站直达；1 号口出站后步行约 9 分钟到海滩"],
+        ["步行", 18, "沿海滨步道向 Port Vell 步行约 1.3 公里", "经巴塞罗那塔码头，海风较大时备薄外套"],
+        ["步行", 20, "穿过 Rambla de Mar，经哥伦布纪念碑进入兰布拉大道", "约 1.4 公里；人流密集区域留意随身物品"],
+        ["地铁", 8, "从 Liceu 站乘 L3 线至 Passeig de Gràcia", "3 站直达；Passeig de Gràcia 出站"]
+      ],
+      [
+        ["地铁", 9, "Passeig de Gràcia 站乘 L3 线至 Liceu", "3 站直达；博盖利亚市场从 La Rambla 侧入口进入"],
+        ["地铁", 10, "Liceu 站乘 L3 线返回 Passeig de Gràcia", "3 站直达；从 Casa Batlló 方向出口开始购物"],
+        ["机场铁路", 35, "Passeig de Gràcia 站乘 R2 Nord 线前往 BCN 机场 T2", "约 30 分钟一班；前往 T1 需在 T2 换免费接驳巴士"]
+      ]
+    ]
   }
 };
 
@@ -168,6 +262,8 @@ let state = {
   profile: destinationProfiles["东京"],
   origin: "上海",
   destination: "东京",
+  displayDestination: "东京",
+  searchCity: "东京",
   start: "2026-10-01",
   end: "2026-10-06"
 };
@@ -182,19 +278,31 @@ function formatDateRange(start, end) {
   return `${a.getMonth() + 1}月${a.getDate()}日 - ${b.getMonth() + 1}月${b.getDate()}日`;
 }
 
+function resolveDestination(input) {
+  const key = destinationAliases[input] || input;
+  const profile = destinationProfiles[key] || fallbackProfile;
+  return {
+    key,
+    profile,
+    displayName: profile.displayName || input,
+    searchCity: profile.searchCity || input
+  };
+}
+
 function ctripFlightUrl() {
-  const from = airportCodes[state.origin] || encodeURIComponent(state.origin);
-  const to = airportCodes[state.destination] || encodeURIComponent(state.destination);
+  const from = airportCodes[state.origin];
+  const to = airportCodes[state.destination] || airportCodes[state.searchCity];
+  if (!from || !to) return "https://flights.ctrip.com/";
   return `https://flights.ctrip.com/online/list/round-${from}-${to}?depdate=${state.start}_${state.end}&cabin=y_s&adult=1&child=0&infant=0`;
 }
 
 function ctripHotelUrl(hotel) {
-  const query = encodeURIComponent(`${state.destination} ${hotel.name}`);
-  return `https://hotels.ctrip.com/hotels/list?cityName=${encodeURIComponent(state.destination)}&checkin=${state.start}&checkout=${state.end}&searchWord=${query}`;
+  const query = encodeURIComponent(`${state.searchCity} ${hotel.name}`);
+  return `https://hotels.ctrip.com/hotels/list?cityName=${encodeURIComponent(state.searchCity)}&checkin=${state.start}&checkout=${state.end}&searchWord=${query}`;
 }
 
 function mapDirectionsUrl(from, to) {
-  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${state.destination} ${from}`)}&destination=${encodeURIComponent(`${state.destination} ${to}`)}&travelmode=transit`;
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${state.searchCity} ${from}`)}&destination=${encodeURIComponent(`${state.searchCity} ${to}`)}&travelmode=transit`;
 }
 
 function fallbackTransport(stops, index, hub) {
@@ -205,6 +313,12 @@ function fallbackTransport(stops, index, hub) {
 }
 
 function weatherFor(month, destination) {
+  if (destination === "西班牙") {
+    if ([12, 1, 2].includes(month)) return { low: 8, high: 15, label: "温和偏凉", wear: "中等外套 + 针织内搭", items: ["长袖上衣 3 件", "针织衫 2 件", "中等厚度外套", "轻便雨具", "保湿用品", "舒适步行鞋"] };
+    if ([3, 4, 5].includes(month)) return { low: 13, high: 21, label: "温暖偶雨", wear: "轻外套 + 分层穿搭", items: ["长袖上衣 3 件", "薄针织 1 件", "轻便外套", "折叠伞", "防晒用品", "舒适运动鞋"] };
+    if ([6, 7, 8].includes(month)) return { low: 22, high: 29, label: "晴热少雨", wear: "透气短袖 + 防晒层", items: ["透气短袖 4 件", "轻薄下装 3 件", "防晒外套", "太阳镜", "高倍防晒", "舒适凉鞋"] };
+    return { low: 17, high: 25, label: "晴朗温和", wear: "薄外套 + 长袖，海边防风", items: ["长袖上衣 3 件", "薄外套 1 件", "长裤 2 条", "折叠伞", "舒适步行鞋", "防晒用品"] };
+  }
   const tropical = ["曼谷", "新加坡", "三亚"].includes(destination);
   if (tropical) return { low: 25, high: 32, label: "晴雨交替", wear: "透气短袖 + 防晒外套", items: ["轻薄短袖 4 件", "速干下装 2 件", "防晒外套", "折叠伞", "高倍防晒", "舒适凉鞋"] };
   if ([12, 1, 2].includes(month)) return { low: 3, high: 11, label: "晴冷干燥", wear: "厚外套 + 保暖内搭", items: ["保暖内衣 2 套", "羊毛衫 2 件", "防风外套", "围巾手套", "保湿用品", "防滑步行鞋"] };
@@ -213,23 +327,26 @@ function weatherFor(month, destination) {
   return { low: 18, high: 24, label: "晴间多云", wear: "薄外套 + 长袖，早晚添一层", items: ["长袖上衣 3 件", "薄外套 1 件", "长裤 2 条", "折叠伞", "舒适步行鞋", "小容量保温杯"] };
 }
 
-function generateFlights(origin, destination) {
+function generateFlights(origin, destination, profile = state.profile) {
   const base = destination.length * 37 + origin.length * 29;
   const departTimes = ["06:35", "07:20", "08:20", "09:10", "10:40", "11:55", "13:10", "14:25", "15:40", "17:15", "19:05", "20:30"];
-  return airlines.map((airline, index) => {
-    const departHour = Number(departTimes[index].slice(0, 2));
-    const duration = 150 + (index % 4) * 25;
+  const destinationAirlines = profile.flightAirlines || airlines;
+  const destinationPlatforms = profile.flightPlatforms || platforms;
+  return destinationAirlines.map((airline, index) => {
+    const duration = profile.flightDuration ? profile.flightDuration + (index % 4) * 45 : 150 + (index % 4) * 25;
+    const departMinutes = Number(departTimes[index].slice(0, 2)) * 60 + Number(departTimes[index].slice(3));
+    const arriveMinutes = (departMinutes + duration) % 1440;
     return {
       id: index,
       airline,
-      platform: platforms[index],
+      platform: destinationPlatforms[index],
       depart: departTimes[index],
-      arrive: `${String((departHour + Math.floor(duration / 60)) % 24).padStart(2, "0")}:${String((Number(departTimes[index].slice(3)) + duration % 60) % 60).padStart(2, "0")}`,
+      arrive: `${String(Math.floor(arriveMinutes / 60)).padStart(2, "0")}:${String(arriveMinutes % 60).padStart(2, "0")}`,
       returnTime: ["11:20", "13:45", "15:10", "17:30", "19:05", "20:10"][index % 6],
       duration,
-      stop: index % 5 === 4 ? "经停 1 次" : "直飞",
+      stop: profile.flightDuration ? (index % 5 === 4 ? "经停 2 次" : "经停 1 次") : (index % 5 === 4 ? "经停 1 次" : "直飞"),
       baggage: index % 3 === 1 ? "手提 7kg" : "托运 20kg",
-      price: 1988 + base + index * 117 + (index % 3) * 86
+      price: (profile.flightBasePrice || 1988) + base + index * 117 + (index % 3) * 86
     };
   });
 }
@@ -335,7 +452,7 @@ function renderItinerary(start, destination) {
     return `<article class="day-row"><div class="day-number"><span>DAY ${String(index + 1).padStart(2, "0")}</span><strong>${date.getMonth() + 1}.${String(date.getDate()).padStart(2, "0")}</strong><small>交通约 ${totalMinutes} 分钟</small></div><div class="day-content"><div class="day-title"><div><h3>${index === 0 ? "初见" : index === count - 1 ? "收尾于" : "漫游"}${stops[0]}${index === 2 ? " · 一日小出走" : ""}</h3><p>建议 ${index === 2 ? "07:00" : "08:30"} 从酒店出发 · 以 ${hotelStation} 为起点</p></div><span>${stops.length} 个停留点</span></div><div class="transport-timeline"><div class="place-node hotel-start"><span>H</span><div><strong>${selectedHotel?.name || "已选酒店"}</strong><p>${hotelStation}附近 · 早餐后出发</p></div></div>${routeHtml}</div><p class="day-tip">${index === 0 ? "落地先把节奏放慢；首段与返程已按当前所选酒店最近车站补充接驳时间。" : index === 2 ? "近郊日尽量避开周末高峰，提前查好回程末班车，穿适合长距离步行的鞋。" : index === count - 1 ? "最后一天把采购集中在交通枢纽附近，国际航班至少提前 3 小时到达机场。" : "路线按少折返编排；高峰期建议在页面标注时间基础上额外预留 10–15 分钟。"}</p></div></article>`;
   }).join("");
   $("#buy-grid").innerHTML = state.profile.buys.map(([type, name, tip]) => `<article class="buy-item"><span>${type}</span><strong>${name}</strong><p>${tip}</p></article>`).join("");
-  $("#buy-destination").textContent = destination;
+  $("#buy-destination").textContent = state.displayDestination;
 }
 
 function updateCosts() {
@@ -359,7 +476,7 @@ function updateCosts() {
 
 function generatePlan() {
   const origin = $("#origin").value.trim();
-  const destination = $("#destination").value.trim();
+  const destinationInput = $("#destination").value.trim();
   const start = $("#start-date").value;
   const end = $("#end-date").value;
   const budget = Number($("#hotel-budget").value);
@@ -367,30 +484,37 @@ function generatePlan() {
     showToast("返程日期需要晚于出发日期");
     return;
   }
+  const destination = resolveDestination(destinationInput);
   state.days = daysBetween(start, end);
   state.nights = Math.max(1, state.days - 1);
-  state.profile = destinationProfiles[destination] || fallbackProfile;
+  state.profile = destination.profile;
   state.origin = origin;
-  state.destination = destination;
+  state.destination = destination.key;
+  state.displayDestination = destination.displayName;
+  state.searchCity = destination.searchCity;
   state.start = start;
   state.end = end;
-  state.flights = generateFlights(origin, destination);
+  state.flights = generateFlights(origin, state.destination, state.profile);
   state.hotels = generateHotels(state.profile, budget);
   state.selectedFlight = [...state.flights].sort((a, b) => a.price - b.price)[1].id;
   state.selectedHotel = state.hotels.find(hotel => hotel.price <= budget)?.id ?? 0;
   $("#budget-range").value = Math.min(1600, Math.max(400, budget));
   $("#budget-output").value = Math.min(1600, Math.max(400, budget));
-  $("#sidebar-destination").textContent = destination;
-  $("#greeting-destination").textContent = destination;
+  $("#sidebar-destination").textContent = state.displayDestination;
+  $("#greeting-destination").textContent = state.displayDestination;
   $("#sidebar-date").textContent = `${formatDateRange(start, end)} · ${state.days}天${state.nights}晚`;
-  $("#visual-route").textContent = `${origin} → ${destination}`;
+  $("#visual-route").textContent = `${origin} → ${state.displayDestination}`;
   $("#visual-meta").textContent = `${state.days} 天 · 城市漫游 · 经典与购物`;
-  $("#final-summary").textContent = `${formatDateRange(start, start).split(" - ")[0]}从${origin}出发，入住市区交通便利酒店，用 ${state.days} 天走过${destination}的经典地标、生活街区与重点购物地。`;
+  $("#final-summary").textContent = `${formatDateRange(start, start).split(" - ")[0]}从${origin}出发，入住市区交通便利酒店，用 ${state.days} 天走过${state.displayDestination}的经典地标、生活街区与重点购物地。`;
+  const destinationImage = state.profile.image || "assets/tokyo-street.jpg";
+  $("#planner").style.setProperty("--hero-image", `url("${destinationImage}")`);
+  $(".trip-visual img").src = destinationImage;
+  $(".trip-visual img").alt = state.profile.imageAlt || `${state.displayDestination}城市风景`;
   $$(".route-strip b").forEach((item, index) => { item.textContent = state.profile.route[index]; });
-  renderWeather(start, destination);
+  renderWeather(start, state.destination);
   renderFlights();
   renderHotels();
-  renderItinerary(start, destination);
+  renderItinerary(start, state.destination);
   updateCosts();
 }
 
@@ -485,7 +609,7 @@ $("#save-plan").addEventListener("click", event => {
 });
 
 $("#export-plan").addEventListener("click", () => {
-  const destination = $("#destination").value.trim();
+  const destination = state.displayDestination;
   const summary = `${destination}旅行规划\n${$("#sidebar-date").textContent}\n${$("#overview-flight-name").textContent} ${$("#overview-flight-price").textContent}\n${$("#overview-hotel-name").textContent} ${$("#overview-hotel-price").textContent}\n预计基础花费 ${$("#cost-total").textContent}\n\n注：当前为产品演示模拟数据。`;
   const blob = new Blob([summary], { type: "text/plain;charset=utf-8" });
   const link = document.createElement("a");
