@@ -669,7 +669,15 @@ async function fetchPlaceData(location) {
   }).filter(Boolean));
   if (classicPoints.length < 14) classicPoints = uniquePoints([...classicPoints, ...await fetchWikipediaPlaces(location)]);
   const shoppingPoints = uniquePoints(features[3].map(feature => pointFromFeature(feature, "shopping")).filter(point => point && (point.key === "shop" || point.value === "mall" || point.value === "marketplace" || point.value === "department_store")));
-  const stationPoints = uniquePoints(features[4].map(feature => pointFromFeature(feature, "station")).filter(point => point && (point.key === "railway" || point.key === "public_transport" || /station|subway|tram/.test(point.value || ""))));
+  const stationPoints = uniquePoints(features[4].map(feature => pointFromFeature(feature, "station")).filter(point => {
+    if (!point) return false;
+    const value = point.value || "";
+    const name = point.name || "";
+    const railwayStop = point.key === "railway" && /station|halt|stop|subway|tram|light_rail/i.test(value);
+    const publicTransportStop = point.key === "public_transport" && /station|platform|stop_position|stop_area/i.test(value);
+    const namedStop = /station|gare|metro|métro|subway|tram|bahn|terminal/i.test(name);
+    return railwayStop || publicTransportStop || namedStop;
+  }));
   return {
     hotels: hotelPoints,
     classics: classicPoints,
