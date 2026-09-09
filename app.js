@@ -675,7 +675,7 @@ async function fetchPlaceData(location) {
     const name = point.name || "";
     const railwayStop = point.key === "railway" && /station|halt|stop|subway|tram|light_rail/i.test(value);
     const publicTransportStop = point.key === "public_transport" && /station|platform|stop_position|stop_area/i.test(value);
-    const invalidNamedStop = /recharge|charging|parking|vehicle|voiture|car park|gas station/i.test(name);
+    const invalidNamedStop = /recharge|charging|parking|vehicle|voiture|car park|gas station|station service|service station|fuel|petrol|essence/i.test(name);
     const namedStop = !invalidNamedStop && /station|gare|metro|métro|subway|tram|bahn|terminal/i.test(name);
     return railwayStop || publicTransportStop || namedStop;
   }));
