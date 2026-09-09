@@ -106,6 +106,26 @@ const hotelCatalogs = {
 };
 const airportCodes = { "上海": "sha", "东京": "tyo", "大阪": "osa", "曼谷": "bkk", "西班牙": "bcn", "巴塞罗那": "bcn", "北京": "bjs", "广州": "can", "深圳": "szx", "成都": "ctu", "杭州": "hgh", "重庆": "ckg", "西安": "sia", "香港": "hkg" };
 
+const knownOriginLocations = {
+  "上海": { name: "上海", country: "中国", countryCode: "CN", lat: 31.2304, lon: 121.4737 },
+  "北京": { name: "北京", country: "中国", countryCode: "CN", lat: 39.9042, lon: 116.4074 },
+  "广州": { name: "广州", country: "中国", countryCode: "CN", lat: 23.1291, lon: 113.2644 },
+  "深圳": { name: "深圳", country: "中国", countryCode: "CN", lat: 22.5431, lon: 114.0579 },
+  "成都": { name: "成都", country: "中国", countryCode: "CN", lat: 30.5728, lon: 104.0668 },
+  "杭州": { name: "杭州", country: "中国", countryCode: "CN", lat: 30.2741, lon: 120.1551 },
+  "重庆": { name: "重庆", country: "中国", countryCode: "CN", lat: 29.4316, lon: 106.9123 },
+  "西安": { name: "西安", country: "中国", countryCode: "CN", lat: 34.3416, lon: 108.9398 },
+  "香港": { name: "香港", country: "中国", countryCode: "HK", lat: 22.3193, lon: 114.1694 }
+};
+
+const fullyCuratedDestinations = new Set(["东京", "西班牙"]);
+const resourceCache = { airports: null, countries: null };
+const dynamicFallbackLabels = {
+  classic: ["城市历史中心", "代表性建筑区", "当地博物馆", "城市公园", "文化街区", "滨水或观景区", "历史街巷", "艺术文化区", "城市公共广场", "特色社区", "当地展馆", "城市地标区", "近郊风景区", "传统街区"],
+  shopping: ["主要商业街", "本地市场", "设计品牌街区", "大型购物中心", "伴手礼集中区", "当地生活市集"],
+  areas: ["市中心", "历史城区", "中央车站周边", "核心商圈", "文化区", "交通枢纽周边"]
+};
+
 const transportGuides = {
   "东京": {
     hub: "浅草站",
@@ -264,6 +284,10 @@ let state = {
   destination: "东京",
   displayDestination: "东京",
   searchCity: "东京",
+  originAirportCode: "sha",
+  destinationAirportCode: "tyo",
+  dynamicGuide: null,
+  sourceStatus: "东京精细城市方案",
   start: "2026-10-01",
   end: "2026-10-06"
 };
@@ -278,26 +302,252 @@ function formatDateRange(start, end) {
   return `${a.getMonth() + 1}月${a.getDate()}日 - ${b.getMonth() + 1}月${b.getDate()}日`;
 }
 
-function resolveDestination(input) {
-  const key = destinationAliases[input] || input;
-  const profile = destinationProfiles[key] || fallbackProfile;
+async function fetchJson(url, timeout = 9000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+    if (!response.ok) throw new Error(`数据服务返回 ${response.status}`);
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function loadJsonAsset(name) {
+  if (!resourceCache[name]) {
+    resourceCache[name] = fetchJson(`assets/${name}.json`, 15000).catch(error => {
+      resourceCache[name] = null;
+      throw error;
+    });
+  }
+  return resourceCache[name];
+}
+
+async function fetchGeocodeResults(name) {
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=10&language=zh&format=json`;
+  const data = await fetchJson(url, 10000);
+  return data.results || [];
+}
+
+function bestGeocodeResult(results) {
+  const rank = code => code === "PPLC" ? 5 : /^PCL/.test(code || "") ? 4 : /^PPLA/.test(code || "") ? 3 : /^PPL/.test(code || "") ? 2 : 1;
+  return [...results].sort((a, b) => rank(b.feature_code) - rank(a.feature_code) || (b.population || 0) - (a.population || 0))[0];
+}
+
+async function wikidataEnglishNames(name) {
+  const searchUrl = `https://www.wikidata.org/w/api.php?origin=*&action=wbsearchentities&search=${encodeURIComponent(name)}&language=zh&uselang=zh&type=item&limit=6&format=json`;
+  const search = await fetchJson(searchUrl, 10000);
+  const ids = (search.search || []).map(item => item.id).filter(Boolean);
+  if (!ids.length) return [];
+  const entityUrl = `https://www.wikidata.org/w/api.php?origin=*&action=wbgetentities&ids=${ids.join("|")}&languages=en&languagefallback=1&props=labels&format=json`;
+  const entities = (await fetchJson(entityUrl, 10000)).entities || {};
+  return ids.map(id => entities[id]?.labels?.en?.value).filter(Boolean);
+}
+
+async function geocodePlace(name) {
+  try {
+    const direct = bestGeocodeResult(await fetchGeocodeResults(name));
+    if (direct) return direct;
+  } catch (error) {
+    // Try the multilingual fallback below when the primary geocoder is unavailable.
+  }
+  try {
+    const alternatives = await wikidataEnglishNames(name);
+    for (const alternative of alternatives) {
+      try {
+        const result = bestGeocodeResult(await fetchGeocodeResults(alternative));
+        if (result) return result;
+      } catch (error) {
+        // Continue with the next recognized place name.
+      }
+    }
+  } catch (error) {
+    // The final error below gives the user one consistent correction path.
+  }
+  throw new Error(`未识别到“${name}”，请填写城市、国家或地区全名`);
+}
+
+async function resolveLocation(input) {
+  const result = await geocodePlace(input);
+  const countryCode = result.country_code || "";
+  if (/^PCL/.test(result.feature_code || "")) {
+    const countries = await loadJsonAsset("countries");
+    const country = countries.find(item => item.iso2 === countryCode);
+    if (country?.capital) {
+      const capital = await geocodePlace(country.capital);
+      return {
+        name: capital.name,
+        country: result.country || country.zh || country.name,
+        countryCode,
+        lat: capital.latitude,
+        lon: capital.longitude,
+        elevation: capital.elevation || 0,
+        timezone: capital.timezone,
+        admin1: capital.admin1 || capital.name,
+        inputType: "country"
+      };
+    }
+  }
   return {
-    key,
-    profile,
-    displayName: profile.displayName || input,
-    searchCity: profile.searchCity || input
+    name: result.name,
+    country: result.country || result.name,
+    countryCode,
+    lat: result.latitude,
+    lon: result.longitude,
+    elevation: result.elevation || 0,
+    timezone: result.timezone,
+    admin1: result.admin1 || result.admin2 || result.name,
+    inputType: "city"
   };
 }
 
+function haversineKm(from, to) {
+  const toRad = value => value * Math.PI / 180;
+  const dLat = toRad(to.lat - from.lat);
+  const dLon = toRad(to.lon - from.lon);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function nearestAirport(location, airports) {
+  const sameCountry = airports.filter(airport => !location.countryCode || airport.country === location.countryCode);
+  const candidates = sameCountry.length ? sameCountry : airports;
+  let best = null;
+  let bestScore = Infinity;
+  candidates.forEach(airport => {
+    const distance = haversineKm(location, airport);
+    if (distance > 650) return;
+    const internationalBonus = /international|intl/i.test(airport.name) ? 120 : /charles de gaulle|heathrow/i.test(airport.name) ? 105 : 0;
+    const cityBonus = airport.city.toLowerCase().includes(location.name.toLowerCase()) ? 24 : 0;
+    const score = distance - internationalBonus - cityBonus;
+    if (score < bestScore) {
+      bestScore = score;
+      best = { ...airport, distance: Math.round(distance) };
+    }
+  });
+  return best;
+}
+
+async function resolveOrigin(input) {
+  const known = knownOriginLocations[input];
+  if (known && airportCodes[input]) return { location: known, airportCode: airportCodes[input] };
+  const location = await resolveLocation(input);
+  const airports = await loadJsonAsset("airports");
+  const airport = nearestAirport(location, airports);
+  return { location, airportCode: airport?.iata?.toLowerCase() || null };
+}
+
+async function fetchCityImage(location) {
+  try {
+    const url = `https://zh.wikipedia.org/w/api.php?origin=*&action=query&titles=${encodeURIComponent(location.name)}&prop=pageimages&pithumbsize=1600&format=json`;
+    const data = await fetchJson(url, 8000);
+    const page = Object.values(data.query?.pages || {}).find(item => item.thumbnail?.source);
+    if (page) return page.thumbnail.source;
+  } catch (error) {
+    // The city plan remains usable when a remote image service is unavailable.
+  }
+  return `https://staticmap.openstreetmap.de/staticmap.php?center=${location.lat},${location.lon}&zoom=12&size=1600x900&maptype=mapnik`;
+}
+
+function weatherLabel(code) {
+  if ([0, 1].includes(code)) return ["☀", "晴朗"];
+  if ([2, 3].includes(code)) return ["◒", "多云"];
+  if ([45, 48].includes(code)) return ["≈", "有雾"];
+  if (code >= 51 && code <= 67) return ["☂", "有雨"];
+  if (code >= 71 && code <= 77) return ["✳", "有雪"];
+  if (code >= 80 && code <= 82) return ["☂", "阵雨"];
+  if (code >= 95) return ["ϟ", "雷雨"];
+  return ["◒", "天气多变"];
+}
+
+function packingFor(low, high) {
+  if (high <= 8) return { wear: "保暖外套 + 防风内层", items: ["保暖内衣 2 套", "厚针织 2 件", "防风外套", "围巾手套", "保湿用品", "防滑步行鞋"] };
+  if (high <= 18) return { wear: "中等外套 + 分层穿搭", items: ["长袖上衣 3 件", "针织衫 1 件", "中等厚度外套", "折叠伞", "保湿用品", "舒适步行鞋"] };
+  if (high <= 26) return { wear: "薄外套 + 长袖，早晚添一层", items: ["长袖上衣 3 件", "薄外套 1 件", "长裤 2 条", "折叠伞", "防晒用品", "舒适步行鞋"] };
+  return { wear: "透气短袖 + 防晒防雨", items: ["速干短袖 4 件", "轻薄下装 3 件", "防晒外套", "晴雨伞", "高倍防晒", "舒适步行鞋"] };
+}
+
+function seasonalWeather(location, start, count) {
+  const month = new Date(`${start}T12:00:00`).getMonth();
+  const hemisphereMonth = location.lat < 0 ? (month + 6) % 12 : month;
+  const zone = Math.abs(location.lat) < 23 ? "tropical" : Math.abs(location.lat) < 35 ? "warm" : Math.abs(location.lat) < 55 ? "temperate" : "cold";
+  const climate = {
+    tropical: { high: [30, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30], low: [23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 23, 23] },
+    warm: { high: [14, 16, 20, 24, 28, 32, 34, 34, 30, 25, 19, 15], low: [6, 8, 11, 15, 19, 23, 25, 25, 21, 16, 11, 7] },
+    temperate: { high: [7, 9, 13, 18, 23, 27, 30, 29, 25, 19, 13, 8], low: [0, 1, 4, 8, 13, 17, 20, 19, 15, 10, 5, 1] },
+    cold: { high: [-2, -1, 2, 7, 13, 17, 20, 18, 13, 7, 2, -1], low: [-8, -7, -5, -1, 4, 8, 11, 9, 5, 0, -4, -7] }
+  }[zone];
+  const altitudeAdjustment = Math.min(12, Math.max(0, location.elevation || 0) / 220);
+  const baseHigh = Math.round(climate.high[hemisphereMonth] - altitudeAdjustment);
+  const baseLow = Math.round(climate.low[hemisphereMonth] - altitudeAdjustment);
+  const dates = Array.from({ length: Math.min(6, count) }, (_, index) => {
+    const date = new Date(`${start}T12:00:00`);
+    date.setDate(date.getDate() + index);
+    const high = baseHigh - index % 3;
+    const low = baseLow - index % 2;
+    const code = zone === "tropical" && index % 3 === 2 ? 61 : index % 4 === 2 ? 3 : 1;
+    const [icon, label] = weatherLabel(code);
+    return { date, high, low, icon, label };
+  });
+  const packing = packingFor(baseLow, baseHigh);
+  return { days: dates, high: baseHigh, low: baseLow, label: weatherLabel(dates[0] ? (zone === "tropical" ? 61 : 1) : 1)[1], ...packing, source: "当地季节气候估算" };
+}
+
+async function fetchWeather(location, start, end, count) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+  const maxForecast = new Date(today);
+  maxForecast.setDate(maxForecast.getDate() + 15);
+  if (startDate >= today && endDate <= maxForecast) {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&start_date=${start}&end_date=${end}`;
+      const data = await fetchJson(url, 10000);
+      const daily = data.daily;
+      const days = daily.time.slice(0, 6).map((dateText, index) => {
+        const [icon, label] = weatherLabel(daily.weather_code[index]);
+        return { date: new Date(`${dateText}T12:00:00`), high: Math.round(daily.temperature_2m_max[index]), low: Math.round(daily.temperature_2m_min[index]), icon, label };
+      });
+      const high = Math.max(...days.map(day => day.high));
+      const low = Math.min(...days.map(day => day.low));
+      return { days, high, low, label: days[0]?.label || "天气多变", ...packingFor(low, high), source: "Open-Meteo 实时预报" };
+    } catch (error) {
+      // Fall through to a location-aware seasonal estimate.
+    }
+  }
+  return seasonalWeather(location, start, count);
+}
+
+async function resolveDestination(input, start, end, originInfo) {
+  const key = destinationAliases[input] || input;
+  const curated = destinationProfiles[key];
+  if (curated && fullyCuratedDestinations.has(key)) {
+    return {
+      key,
+      profile: curated,
+      displayName: curated.displayName || input,
+      searchCity: curated.searchCity || input,
+      airportCode: airportCodes[key] || airportCodes[curated.searchCity],
+      guide: null,
+      sourceStatus: `${curated.displayName || input}精细城市方案`
+    };
+  }
+  const location = await resolveLocation(input);
+  const dynamic = await buildDynamicDestination(location, input, start, end, originInfo, curated);
+  return { key: curated ? key : `dynamic:${location.countryCode}:${location.name}`, ...dynamic, airportCode: airportCodes[key] || dynamic.airportCode };
+}
+
 function ctripFlightUrl() {
-  const from = airportCodes[state.origin];
-  const to = airportCodes[state.destination] || airportCodes[state.searchCity];
+  const from = state.originAirportCode || airportCodes[state.origin];
+  const to = state.destinationAirportCode || airportCodes[state.destination] || airportCodes[state.searchCity];
   if (!from || !to) return "https://flights.ctrip.com/";
   return `https://flights.ctrip.com/online/list/round-${from}-${to}?depdate=${state.start}_${state.end}&cabin=y_s&adult=1&child=0&infant=0`;
 }
 
 function ctripHotelUrl(hotel) {
-  const query = encodeURIComponent(`${state.searchCity} ${hotel.name}`);
+  const query = encodeURIComponent(`${state.searchCity} ${hotel.searchQuery || hotel.name}`);
   return `https://hotels.ctrip.com/hotels/list?cityName=${encodeURIComponent(state.searchCity)}&checkin=${state.start}&checkout=${state.end}&searchWord=${query}`;
 }
 
@@ -327,6 +577,265 @@ function weatherFor(month, destination) {
   return { low: 18, high: 24, label: "晴间多云", wear: "薄外套 + 长袖，早晚添一层", items: ["长袖上衣 3 件", "薄外套 1 件", "长裤 2 条", "折叠伞", "舒适步行鞋", "小容量保温杯"] };
 }
 
+function boundsFor(location) {
+  const latDelta = 0.16;
+  const lonDelta = Math.min(0.3, 0.16 / Math.max(0.35, Math.cos(location.lat * Math.PI / 180)));
+  return [location.lon - lonDelta, location.lat - latDelta, location.lon + lonDelta, location.lat + latDelta].map(value => value.toFixed(5)).join(",");
+}
+
+async function fetchPhoton(query, location, limit = 100) {
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=${limit}&lang=en&bbox=${boundsFor(location)}`;
+  const data = await fetchJson(url, 9000);
+  return data.features || [];
+}
+
+function pointFromFeature(feature, type) {
+  const [lon, lat] = feature.geometry?.coordinates || [];
+  const properties = feature.properties || {};
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !properties.name) return null;
+  return {
+    name: properties.name,
+    type,
+    area: properties.district || properties.locality || properties.city || properties.state,
+    countryCode: properties.countrycode,
+    lat,
+    lon,
+    key: properties.osm_key,
+    value: properties.osm_value
+  };
+}
+
+function uniquePoints(points) {
+  const seen = new Set();
+  return points.filter(point => {
+    if (!point?.name) return false;
+    const key = point.name.trim().toLocaleLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function fetchWikipediaPlaces(location) {
+  try {
+    const url = `https://en.wikipedia.org/w/api.php?origin=*&action=query&generator=geosearch&ggsprimary=all&ggsnamespace=0&ggsradius=10000&ggscoord=${location.lat}%7C${location.lon}&ggslimit=50&prop=coordinates&format=json`;
+    const data = await fetchJson(url, 9000);
+    const rejected = /^(list of|timeline of)|commune|siege|battle|republic|federation|authority|olympic|election|history of/i;
+    return Object.values(data.query?.pages || {}).map(page => {
+      const coordinate = page.coordinates?.[0];
+      if (!coordinate || rejected.test(page.title) || page.title.toLocaleLowerCase() === location.name.toLocaleLowerCase()) return null;
+      return { name: page.title, type: "classic", area: location.name, lat: coordinate.lat, lon: coordinate.lon };
+    }).filter(Boolean);
+  } catch (error) {
+    return [];
+  }
+}
+
+function fallbackPoint(location, label, index, type) {
+  const angle = index * 1.37;
+  const radius = 0.012 + index % 5 * 0.006;
+  return { name: label, type, area: location.name, lat: location.lat + Math.sin(angle) * radius, lon: location.lon + Math.cos(angle) * radius };
+}
+
+function fillPoints(points, labels, location, count, type) {
+  const result = uniquePoints(points).slice(0, count);
+  let index = 0;
+  while (result.length < count) {
+    const label = labels[index % labels.length];
+    const name = `${location.name} · ${label}`;
+    if (!result.some(point => point.name === name)) result.push(fallbackPoint(location, name, index, type));
+    index += 1;
+  }
+  return result;
+}
+
+async function fetchPlaceData(location) {
+  const results = await Promise.allSettled([
+    fetchPhoton("hotel", location),
+    fetchPhoton("tourist attraction", location),
+    fetchPhoton("museum", location),
+    fetchPhoton("shopping", location),
+    fetchPhoton("station", location)
+  ]);
+  const features = results.map(result => result.status === "fulfilled" ? result.value : []);
+  const hotelPoints = uniquePoints(features[0].map(feature => {
+    const properties = feature.properties || {};
+    return properties.osm_key === "tourism" && properties.osm_value === "hotel" ? pointFromFeature(feature, "hotel") : null;
+  }).filter(Boolean));
+  let classicPoints = uniquePoints([...features[1], ...features[2]].map(feature => {
+    const properties = feature.properties || {};
+    const allowed = properties.osm_key === "tourism" || properties.osm_key === "historic" || properties.osm_value === "park" || properties.osm_value === "place_of_worship";
+    return allowed ? pointFromFeature(feature, "classic") : null;
+  }).filter(Boolean));
+  if (classicPoints.length < 14) classicPoints = uniquePoints([...classicPoints, ...await fetchWikipediaPlaces(location)]);
+  const shoppingPoints = uniquePoints(features[3].map(feature => pointFromFeature(feature, "shopping")).filter(point => point && (point.key === "shop" || point.value === "mall" || point.value === "marketplace" || point.value === "department_store")));
+  const stationPoints = uniquePoints(features[4].map(feature => pointFromFeature(feature, "station")).filter(point => point && (point.key === "railway" || point.key === "public_transport" || /station|subway|tram/.test(point.value || ""))));
+  return {
+    hotels: hotelPoints,
+    classics: classicPoints,
+    shopping: shoppingPoints,
+    stations: stationPoints,
+    live: results.some(result => result.status === "fulfilled")
+  };
+}
+
+function closestPoint(point, candidates) {
+  if (!candidates.length) return null;
+  return candidates.reduce((best, candidate) => haversineKm(point, candidate) < haversineKm(point, best) ? candidate : best, candidates[0]);
+}
+
+function buildHotelCatalog(placeData, location) {
+  const actual = placeData.hotels.filter(hotel => !hotel.countryCode || hotel.countryCode === location.countryCode).slice(0, 12).map(hotel => {
+    const station = closestPoint(hotel, placeData.stations);
+    const stationDistance = station ? haversineKm(hotel, station) : null;
+    return {
+      name: hotel.name,
+      area: hotel.area || location.name,
+      station: station?.name || `${location.name}中心交通站`,
+      walk: stationDistance == null ? 8 : Math.max(2, Math.min(15, Math.round(stationDistance * 12))),
+      lat: hotel.lat,
+      lon: hotel.lon,
+      live: true,
+      searchQuery: hotel.name
+    };
+  });
+  const actualAreas = uniquePoints(placeData.hotels.map((hotel, index) => hotel.area ? { name: hotel.area, lat: hotel.lat, lon: hotel.lon, index } : null).filter(Boolean)).map(point => point.name);
+  const areas = [...actualAreas, ...dynamicFallbackLabels.areas].slice(0, 6);
+  let index = 0;
+  while (actual.length < 12) {
+    const area = areas[index % areas.length];
+    const point = fallbackPoint(location, area, index, "hotel");
+    const station = closestPoint(point, placeData.stations);
+    actual.push({
+      name: `携程高分酒店 · ${area}`,
+      area,
+      station: station?.name || `${location.name}中心交通站`,
+      walk: 5 + index % 5,
+      lat: point.lat,
+      lon: point.lon,
+      live: true,
+      searchOnly: true,
+      searchQuery: `${area} 高分酒店`
+    });
+    index += 1;
+  }
+  return actual;
+}
+
+function dynamicAirlines(location) {
+  const europe = new Set(["FR", "DE", "IT", "ES", "PT", "GB", "NL", "BE", "CH", "AT", "DK", "SE", "NO", "FI", "IS", "GR", "CZ", "HU", "PL"]);
+  const americas = new Set(["US", "CA", "MX", "BR", "AR", "CL", "PE", "CO"]);
+  if (europe.has(location.countryCode)) return ["中国国际航空", "东方航空", "阿联酋航空", "卡塔尔航空", "土耳其航空", "法国航空", "汉莎航空", "荷兰皇家航空", "芬兰航空", "瑞士国际航空", "英国航空", "国泰航空"];
+  if (americas.has(location.countryCode)) return ["东方航空", "中国国际航空", "国泰航空", "全日空", "大韩航空", "新加坡航空", "联合航空", "达美航空", "美国航空", "加拿大航空", "阿联酋航空", "卡塔尔航空"];
+  return ["东方航空", "中国国际航空", "南方航空", "国泰航空", "新加坡航空", "大韩航空", "全日空", "卡塔尔航空", "阿联酋航空", "土耳其航空", "海南航空", "厦门航空"];
+}
+
+function routeBetween(from, to, stations, isAirport = false) {
+  const distance = haversineKm(from, to);
+  if (distance <= 1.3) {
+    const minutes = Math.max(6, Math.round(distance / 4.5 * 60));
+    return ["步行", minutes, `从${from.name}步行约 ${(distance * 1000).toFixed(0)} 米前往${to.name}`, "按地图步行导航行进；路口与入口以现场标识为准"];
+  }
+  const fromStation = closestPoint(from, stations);
+  const toStation = closestPoint(to, stations);
+  if (fromStation && toStation) {
+    const minutes = Math.max(15, Math.round(distance / (isAirport ? 38 : 22) * 60 + 10));
+    return [isAirport ? "机场交通" : "公共交通", minutes, `从${from.name}步行至${fromStation.name}，乘当地轨道交通或公交前往${toStation.name}，再步行到${to.name}`, `距离约 ${distance.toFixed(1)} 公里；具体线路、换乘站和运营调整请点“地图核对”查看实时结果`];
+  }
+  const minutes = Math.max(12, Math.round(distance / (isAirport ? 42 : 24) * 60 + 8));
+  return [isAirport ? "机场巴士 / 出租车" : "公交 / 出租车", minutes, `从${from.name}前往${to.name}，全程约 ${distance.toFixed(1)} 公里`, "当地轨道数据暂未返回；请用地图核对当天可用的公交、出租车或步行组合"];
+}
+
+function buildDynamicGuide(dayPoints, hotels, placeData, location) {
+  const hubPoint = placeData.stations[0] || { name: `${location.name}中心交通站`, lat: location.lat, lon: location.lon };
+  const feeders = {};
+  hotels.forEach(hotel => {
+    if (feeders[hotel.station]) return;
+    const distance = haversineKm(hotel, hubPoint);
+    if (distance < 0.6) feeders[hotel.station] = [0, `从酒店步行至${hubPoint.name}`, `从${hubPoint.name}步行返回酒店`];
+    else {
+      const minutes = Math.max(8, Math.round(distance / 22 * 60 + 8));
+      feeders[hotel.station] = [minutes, `从${hotel.station}乘当地轨道交通或公交前往${hubPoint.name}`, `从${hubPoint.name}乘当地轨道交通或公交返回${hotel.station}`];
+    }
+  });
+  const days = dayPoints.map((points, dayIndex) => {
+    const routes = [];
+    let previous = { ...hubPoint, name: hubPoint.name };
+    points.forEach((point, pointIndex) => {
+      routes.push(routeBetween(previous, point, placeData.stations, dayIndex === 5 && pointIndex === points.length - 1));
+      previous = point;
+    });
+    if (dayIndex < 5) routes.push(routeBetween(previous, hubPoint, placeData.stations));
+    return routes;
+  });
+  return { hub: hubPoint.name, feeders, days };
+}
+
+async function buildDynamicDestination(location, input, start, end, originInfo, curated) {
+  const count = daysBetween(start, end);
+  const [airports, weather, image, placeData] = await Promise.all([
+    loadJsonAsset("airports"),
+    fetchWeather(location, start, end, count),
+    fetchCityImage(location),
+    fetchPlaceData(location)
+  ]);
+  const airport = nearestAirport(location, airports);
+  if (!airport) throw new Error(`暂时找不到${location.name}附近可用机场，请改填邻近大城市`);
+  const classics = fillPoints(placeData.classics, dynamicFallbackLabels.classic, location, 14, "classic");
+  const shopping = fillPoints(placeData.shopping, dynamicFallbackLabels.shopping, location, 6, "shopping");
+  const airportPoint = { name: `${airport.city} ${airport.iata} 机场`, type: "airport", lat: airport.lat, lon: airport.lon };
+  const dayPoints = [
+    [classics[0], classics[1], classics[2]],
+    [classics[3], shopping[0], classics[4]],
+    [classics[5], classics[6], classics[7]],
+    [classics[8], shopping[1], classics[9]],
+    [classics[10], classics[11], shopping[2]],
+    [shopping[3], classics[12], airportPoint]
+  ];
+  const hotels = buildHotelCatalog(placeData, location);
+  const distance = haversineKm(originInfo.location, location);
+  const duration = Math.max(90, Math.round((distance / 820 + 2) * 4) * 15);
+  const basePrice = Math.max(900, Math.round((distance * 0.42 + 900) / 10) * 10);
+  const displayName = location.inputType === "country" ? `${location.country} · ${location.name}` : location.country && location.country !== location.name ? `${location.name} · ${location.country}` : location.name;
+  const dynamicProfile = {
+    displayName,
+    searchCity: location.name,
+    image,
+    fallbackImage: `https://staticmap.openstreetmap.de/staticmap.php?center=${location.lat},${location.lon}&zoom=12&size=1600x900&maptype=mapnik`,
+    imageAlt: `${location.name}城市与地标风景`,
+    route: [classics[0].name, shopping[0].name, classics[5].name, shopping[1].name],
+    areas: [...new Set(hotels.map(hotel => hotel.area))].slice(0, 6),
+    stations: [...new Set(hotels.map(hotel => hotel.station))],
+    highlights: dayPoints.map(points => points.map(point => point.name)),
+    shopping: shopping.map(point => point.name),
+    buys: [
+      ["当地食品", `${location.country}包装食品与地方风味`, `优先在${shopping[0].name}或正规商超购买，确认入境限制`],
+      ["本地市场", `${shopping[1].name}特色商品`, "先比较价格与产地标签，再集中采购"],
+      ["城市纪念品", `${location.name}建筑与文化主题周边`, "优先博物馆商店、景点官方商店与正版门店"],
+      ["本地设计", `${shopping[2].name}独立品牌`, "保留购物小票并确认退税门槛"],
+      ["手工艺品", `${location.country}传统工艺小件`, "易碎或液体商品提前确认托运规则"],
+      ["文博限定", `${classics[0].name}相关文创`, "在官方商店购买，避免非授权仿品"]
+    ],
+    flightAirlines: dynamicAirlines(location),
+    flightPlatforms: ["携程", "飞猪", "航司官网", "携程", "飞猪", "航司官网", "携程", "飞猪", "航司官网", "携程", "飞猪", "航司官网"],
+    flightBasePrice: basePrice,
+    flightDuration: duration,
+    hasDirect: distance < 4600,
+    hotelCatalog: hotels,
+    weather,
+    dynamicData: true
+  };
+  const profile = curated ? { ...dynamicProfile, route: curated.route, highlights: curated.highlights, shopping: curated.shopping, buys: curated.buys } : dynamicProfile;
+  return {
+    profile,
+    displayName,
+    searchCity: location.name,
+    airportCode: airport.iata.toLowerCase(),
+    guide: curated ? null : buildDynamicGuide(dayPoints, hotels, placeData, location),
+    sourceStatus: placeData.live ? `已匹配 ${location.name} · 公开地图地点数据 + ${weather.source}` : `已匹配 ${location.name} · 地点服务暂时限流，使用城市筛选入口 + ${weather.source}`
+  };
+}
+
 function generateFlights(origin, destination, profile = state.profile) {
   const base = destination.length * 37 + origin.length * 29;
   const departTimes = ["06:35", "07:20", "08:20", "09:10", "10:40", "11:55", "13:10", "14:25", "15:40", "17:15", "19:05", "20:30"];
@@ -344,7 +853,7 @@ function generateFlights(origin, destination, profile = state.profile) {
       arrive: `${String(Math.floor(arriveMinutes / 60)).padStart(2, "0")}:${String(arriveMinutes % 60).padStart(2, "0")}`,
       returnTime: ["11:20", "13:45", "15:10", "17:30", "19:05", "20:10"][index % 6],
       duration,
-      stop: profile.flightDuration ? (index % 5 === 4 ? "经停 2 次" : "经停 1 次") : (index % 5 === 4 ? "经停 1 次" : "直飞"),
+      stop: profile.flightDuration ? (profile.hasDirect && index % 4 === 0 ? "直飞" : index % 5 === 4 ? "经停 2 次" : "经停 1 次") : (index % 5 === 4 ? "经停 1 次" : "直飞"),
       baggage: index % 3 === 1 ? "手提 7kg" : "托运 20kg",
       price: (profile.flightBasePrice || 1988) + base + index * 117 + (index % 3) * 86
     };
@@ -353,41 +862,50 @@ function generateFlights(origin, destination, profile = state.profile) {
 
 function generateHotels(profile, budget, destination = state.destination) {
   const tierOffset = budget >= 1200 ? 8 : budget >= 900 ? 4 : 0;
-  const catalog = hotelCatalogs[destination];
+  const catalog = profile.hotelCatalog || hotelCatalogs[destination];
   return Array.from({ length: 12 }, (_, index) => {
     const sourceIndex = (index + tierOffset) % 12;
-    const hotelData = catalog?.[sourceIndex];
+    const hotelData = catalog?.[sourceIndex % catalog.length];
+    const dynamicHotel = hotelData && !Array.isArray(hotelData) ? hotelData : null;
     return {
     id: index,
-    name: hotelData?.[0] || `${profile.areas[sourceIndex % profile.areas.length]}精选酒店 ${sourceIndex + 1}`,
-    area: hotelData?.[1] || profile.areas[sourceIndex % profile.areas.length],
-    station: hotelData?.[2] || profile.stations[sourceIndex % profile.stations.length],
-    walk: 2 + (index * 3) % 7,
-    rating: (4.9 - (index % 4) * .1).toFixed(1),
-    reviews: 820 + sourceIndex * 463,
+    name: dynamicHotel?.name || hotelData?.[0] || `${profile.areas[sourceIndex % profile.areas.length]}精选酒店 ${sourceIndex + 1}`,
+    area: dynamicHotel?.area || hotelData?.[1] || profile.areas[sourceIndex % profile.areas.length],
+    station: dynamicHotel?.station || hotelData?.[2] || profile.stations[sourceIndex % profile.stations.length],
+    walk: dynamicHotel?.walk || 2 + (index * 3) % 7,
+    rating: dynamicHotel?.live ? null : (4.9 - (index % 4) * .1).toFixed(1),
+    reviews: dynamicHotel?.live ? null : 820 + sourceIndex * 463,
     price: Math.max(360, Math.round((budget * (.62 + (index % 6) * .09) + sourceIndex * 13) / 10) * 10),
-    sources: ["携程", "飞猪", index % 2 ? "Booking" : "Agoda"],
-    image: `assets/hotel-${sourceIndex % 4 + 1}.jpg`
+    sources: dynamicHotel?.live ? ["携程实时页"] : ["携程", "飞猪", index % 2 ? "Booking" : "Agoda"],
+    image: `assets/hotel-${sourceIndex % 4 + 1}.jpg`,
+    live: Boolean(dynamicHotel?.live),
+    searchOnly: Boolean(dynamicHotel?.searchOnly),
+    searchQuery: dynamicHotel?.searchQuery,
+    lat: dynamicHotel?.lat,
+    lon: dynamicHotel?.lon
     };
   });
 }
 
 function renderWeather(start, destination) {
   const date = new Date(`${start}T12:00:00`);
-  const weather = weatherFor(date.getMonth() + 1, destination);
+  const staticWeather = weatherFor(date.getMonth() + 1, destination);
+  const weather = state.profile.weather || staticWeather;
   const icons = ["☀", "◒", "☁", "☀", "☂", "◒"];
   const labels = ["晴", "晴间多云", "多云", "晴", "短时雨", "晴间多云"];
-  $("#weather-days").innerHTML = Array.from({ length: Math.min(6, state.days) }, (_, i) => {
+  const days = weather.days || Array.from({ length: Math.min(6, state.days) }, (_, i) => {
     const day = new Date(date);
     day.setDate(day.getDate() + i);
     const high = weather.high - (i % 3);
     const low = weather.low - (i % 2);
-    return `<article class="weather-day"><p>${day.getMonth() + 1}/${day.getDate()} · 周${"日一二三四五六"[day.getDay()]}</p><span class="weather-icon" aria-hidden="true">${icons[i]}</span><strong>${low}–${high}°</strong><span>${labels[i]}</span></article>`;
-  }).join("");
+    return { date: day, high, low, icon: icons[i], label: labels[i] };
+  });
+  $("#weather-days").innerHTML = days.slice(0, 6).map(day => `<article class="weather-day"><p>${day.date.getMonth() + 1}/${day.date.getDate()} · 周${"日一二三四五六"[day.date.getDay()]}</p><span class="weather-icon" aria-hidden="true">${day.icon}</span><strong>${day.low}–${day.high}°</strong><span>${day.label}</span></article>`).join("");
   $("#packing-list").innerHTML = weather.items.map(item => `<li>${item}</li>`).join("");
   $("#overview-temp").textContent = `${weather.low}–${weather.high}°`;
   $("#overview-weather").textContent = weather.label;
   $("#overview-wear").textContent = weather.wear;
+  $("#weather .source-note").textContent = weather.source || "季节气候估算 · 非实时预报";
 }
 
 function renderFlights() {
@@ -410,8 +928,8 @@ function renderHotels() {
   const visible = state.showAllHotels ? state.hotels : state.hotels.slice(0, 6);
   $("#hotel-grid").innerHTML = visible.map(hotel => `
     <article class="hotel-card ${hotel.id === state.selectedHotel ? "selected" : ""} ${hotel.price > budget ? "over-budget" : ""}">
-      <div class="hotel-image"><img src="${hotel.image}" alt="${hotel.name}客房与公共空间" loading="lazy" /><span class="hotel-score">${hotel.rating}</span></div>
-      <div class="hotel-copy"><h3>${hotel.name}</h3><p class="hotel-location">${hotel.area} · ${hotel.station}步行 ${hotel.walk} 分钟</p><div class="hotel-tags"><span>市中心</span><span>${hotel.sources.length} 平台高评</span></div><div class="hotel-bottom"><span>${hotel.reviews.toLocaleString("zh-CN")} 条评价</span><strong>${money(hotel.price)}<small> / 晚</small></strong></div><div class="hotel-actions"><button class="hotel-select" type="button" data-hotel-select="${hotel.id}">${hotel.id === state.selectedHotel ? "已选住宿" : "选为住宿"}</button><a class="ctrip-link" href="${ctripHotelUrl(hotel)}" target="_blank" rel="noopener noreferrer" aria-label="前往携程查看 ${hotel.name}">携程查看 <span aria-hidden="true">↗</span></a></div></div>
+      <div class="hotel-image"><img src="${hotel.image}" alt="${hotel.live ? `${state.searchCity}酒店空间示意图` : `${hotel.name}客房与公共空间`}" loading="lazy" /><span class="hotel-score">${hotel.rating || "实时"}</span></div>
+      <div class="hotel-copy"><h3>${hotel.name}</h3><p class="hotel-location">${hotel.area} · ${hotel.station}步行约 ${hotel.walk} 分钟</p><div class="hotel-tags"><span>${hotel.searchOnly ? "携程筛选入口" : "市区住宿"}</span><span>${hotel.live ? "评价以携程实时页为准" : `${hotel.sources.length} 平台高评`}</span></div><div class="hotel-bottom"><span>${hotel.live ? "进入携程查看评分与库存" : `${hotel.reviews.toLocaleString("zh-CN")} 条评价`}</span><strong>${hotel.live ? "参考 " : ""}${money(hotel.price)}<small> / 晚</small></strong></div><div class="hotel-actions"><button class="hotel-select" type="button" data-hotel-select="${hotel.id}">${hotel.id === state.selectedHotel ? "已选住宿" : "选为住宿"}</button><a class="ctrip-link" href="${ctripHotelUrl(hotel)}" target="_blank" rel="noopener noreferrer" aria-label="前往携程查看 ${state.searchCity} ${hotel.name}">携程查看 <span aria-hidden="true">↗</span></a></div></div>
     </article>`).join("");
   $("#more-hotels").innerHTML = `${state.showAllHotels ? "收起酒店" : "展开全部 12 家酒店"} <span>${state.showAllHotels ? "↑" : "↓"}</span>`;
 }
@@ -423,7 +941,7 @@ function renderItinerary(start, destination) {
     const date = new Date(startDate);
     date.setDate(date.getDate() + index);
     const stops = state.profile.highlights[index % state.profile.highlights.length];
-    const guide = transportGuides[destination];
+    const guide = transportGuides[destination] || state.dynamicGuide;
     const hub = guide?.hub || state.profile.stations[0];
     const selectedHotel = state.hotels.find(hotel => hotel.id === state.selectedHotel) || state.hotels[0];
     const hotelStation = selectedHotel?.station || hub;
@@ -465,7 +983,7 @@ function updateCosts() {
   $("#overview-flight-name").textContent = `${flight.airline} · ${flight.stop}`;
   $("#overview-flight-price").textContent = `往返 ${money(flight.price)}`;
   $("#overview-hotel-name").textContent = hotel.name;
-  $("#overview-hotel-rating").textContent = `${hotel.rating} 分`;
+  $("#overview-hotel-rating").textContent = hotel.rating ? `${hotel.rating} 分` : "评价实时查看";
   $("#overview-hotel-price").textContent = `${state.nights} 晚 ${money(hotelTotal)}`;
   $("#cost-flight").textContent = money(flight.price);
   $("#cost-hotel").textContent = money(hotelTotal);
@@ -474,17 +992,26 @@ function updateCosts() {
   $("#sidebar-total").textContent = money(total);
 }
 
-function generatePlan() {
+async function generatePlan() {
   const origin = $("#origin").value.trim();
   const destinationInput = $("#destination").value.trim();
   const start = $("#start-date").value;
   const end = $("#end-date").value;
   const budget = Number($("#hotel-budget").value);
+  if (!origin || !destinationInput) {
+    showToast("请填写出发地和目的地");
+    return false;
+  }
+  if (origin.length > 80 || destinationInput.length > 80) {
+    showToast("地点名称请控制在 80 个字符以内");
+    return false;
+  }
   if (new Date(end) < new Date(start)) {
     showToast("返程日期需要晚于出发日期");
-    return;
+    return false;
   }
-  const destination = resolveDestination(destinationInput);
+  const originInfo = await resolveOrigin(origin);
+  const destination = await resolveDestination(destinationInput, start, end, originInfo);
   state.days = daysBetween(start, end);
   state.nights = Math.max(1, state.days - 1);
   state.profile = destination.profile;
@@ -492,9 +1019,13 @@ function generatePlan() {
   state.destination = destination.key;
   state.displayDestination = destination.displayName;
   state.searchCity = destination.searchCity;
+  state.originAirportCode = originInfo.airportCode;
+  state.destinationAirportCode = destination.airportCode;
+  state.dynamicGuide = destination.guide;
+  state.sourceStatus = destination.sourceStatus;
   state.start = start;
   state.end = end;
-  state.flights = generateFlights(origin, state.destination, state.profile);
+  state.flights = generateFlights(origin, state.searchCity, state.profile);
   state.hotels = generateHotels(state.profile, budget);
   state.selectedFlight = [...state.flights].sort((a, b) => a.price - b.price)[1].id;
   state.selectedHotel = state.hotels.find(hotel => hotel.price <= budget)?.id ?? 0;
@@ -505,17 +1036,26 @@ function generatePlan() {
   $("#sidebar-date").textContent = `${formatDateRange(start, end)} · ${state.days}天${state.nights}晚`;
   $("#visual-route").textContent = `${origin} → ${state.displayDestination}`;
   $("#visual-meta").textContent = `${state.days} 天 · 城市漫游 · 经典与购物`;
+  $("#plan-source-status").textContent = state.sourceStatus;
   $("#final-summary").textContent = `${formatDateRange(start, start).split(" - ")[0]}从${origin}出发，入住市区交通便利酒店，用 ${state.days} 天走过${state.displayDestination}的经典地标、生活街区与重点购物地。`;
   const destinationImage = state.profile.image || "assets/tokyo-street.jpg";
   $("#planner").style.setProperty("--hero-image", `url("${destinationImage}")`);
-  $(".trip-visual img").src = destinationImage;
-  $(".trip-visual img").alt = state.profile.imageAlt || `${state.displayDestination}城市风景`;
+  const visualImage = $(".trip-visual img");
+  visualImage.onerror = () => {
+    visualImage.onerror = null;
+    const fallbackImage = state.profile.fallbackImage || "assets/tokyo-street.jpg";
+    visualImage.src = fallbackImage;
+    $("#planner").style.setProperty("--hero-image", `url("${fallbackImage}")`);
+  };
+  visualImage.src = destinationImage;
+  visualImage.alt = state.profile.imageAlt || `${state.displayDestination}城市风景`;
   $$(".route-strip b").forEach((item, index) => { item.textContent = state.profile.route[index]; });
   renderWeather(start, state.destination);
   renderFlights();
   renderHotels();
   renderItinerary(start, state.destination);
   updateCosts();
+  return true;
 }
 
 function showToast(message) {
@@ -526,18 +1066,24 @@ function showToast(message) {
   showToast.timer = setTimeout(() => toast.classList.remove("show"), 2600);
 }
 
-$("#trip-form").addEventListener("submit", (event) => {
+$("#trip-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = $("#generate-button");
   document.body.classList.add("is-loading");
   button.disabled = true;
-  setTimeout(() => {
-    generatePlan();
+  try {
+    const generated = await generatePlan();
+    if (generated) {
+      $("#results").scrollIntoView({ behavior: "smooth", block: "start" });
+      showToast("攻略已按你的条件重新生成");
+    }
+  } catch (error) {
+    const message = error.name === "AbortError" ? "目的地数据加载超时，请稍后重试" : error.message || "暂时无法生成该目的地，请稍后重试";
+    showToast(message);
+  } finally {
     document.body.classList.remove("is-loading");
     button.disabled = false;
-    $("#results").scrollIntoView({ behavior: "smooth", block: "start" });
-    showToast("攻略已按你的条件重新生成");
-  }, 650);
+  }
 });
 
 $("#swap-button").addEventListener("click", () => {
@@ -629,4 +1175,4 @@ const observer = new IntersectionObserver(entries => {
 
 $$('.content-section').forEach(section => observer.observe(section));
 
-generatePlan();
+generatePlan().catch(error => showToast(error.message || "初始行程加载失败"));

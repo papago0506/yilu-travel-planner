@@ -325,6 +325,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 
 .section-index { color: var(--green); }
 .heading-copy { max-width: 58ch; margin: 8px 0 0; color: var(--muted); font-size: .82rem; }
+.plan-source-status { margin: 10px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.5; overflow-wrap: anywhere; }
 
 .quiet-button {
   padding: 9px 13px;
@@ -416,8 +417,8 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .hotel-image img { width: 100%; height: 100%; position: absolute; inset: 0; object-fit: cover; filter: saturate(.72); }
 .hotel-score { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 34px; height: 34px; color: var(--paper); background: var(--green-dark); font-size: .68rem; font-weight: 700; }
 .hotel-copy { min-width: 0; display: flex; flex-direction: column; }
-.hotel-copy h3 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-size: 1.05rem; font-weight: 500; }
-.hotel-location { margin: 6px 0 0; color: var(--muted); font-size: .66rem; }
+.hotel-copy h3 { min-height: 2.5em; display: -webkit-box; margin: 0; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-family: var(--font-display); font-size: 1.05rem; font-weight: 500; line-height: 1.25; }
+.hotel-location { margin: 6px 0 0; color: var(--muted); font-size: .66rem; line-height: 1.45; overflow-wrap: anywhere; }
 .hotel-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
 .hotel-tags span { padding: 3px 6px; color: var(--green); background: var(--green-soft); font-size: .58rem; }
 .hotel-bottom { display: flex; justify-content: space-between; align-items: end; gap: 8px; margin-top: auto; padding-top: 10px; }
@@ -461,11 +462,11 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .route-rail i { flex: 1; width: 1px; margin-top: 5px; background: var(--line); }
 .route-detail { padding: 3px 0 14px; }
 .route-topline { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
-.route-topline span { color: var(--muted); font-size: .66rem; }
+.route-topline span { min-width: 0; color: var(--muted); font-size: .66rem; overflow-wrap: anywhere; }
 .route-topline strong { color: var(--coral); font-size: .72rem; white-space: nowrap; }
 .route-detail > p { margin: 8px 0 0; font-size: .78rem; font-weight: 600; line-height: 1.6; }
 .route-foot { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-top: 5px; }
-.route-foot small { color: var(--muted); font-size: .66rem; line-height: 1.55; }
+.route-foot small { min-width: 0; color: var(--muted); font-size: .66rem; line-height: 1.55; overflow-wrap: anywhere; }
 .route-foot a { flex: 0 0 auto; color: var(--green); border-bottom: 1px solid color-mix(in oklch, var(--green) 40%, transparent); font-size: .64rem; font-weight: 700; white-space: nowrap; }
 .route-foot a:hover { border-color: currentColor; }
 .day-tip { margin: 16px 0 0; padding: 12px 14px; color: var(--muted); background: var(--paper-deep); font-size: .7rem; line-height: 1.65; }
